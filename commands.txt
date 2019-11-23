@@ -1,0 +1,133 @@
+--------------------------------------------------
+CREDENTIALS
+--------------------------------------------------
+
+- BDA HDP
+Username: mcmuser
+Password: Mcmaster!2019
+
+- Open terminal by right clicking on desktop and selecting 'Open Terminal here'
+
+- Login into docker
+ssh root@127.0.0.1 -p 2222
+Password: Mcmaster!2019
+
+--------------------------------------------------
+WORD COUNT USING JAVA PROGRAM AND MAPREDUCE(MR)
+--------------------------------------------------
+- Create test directory
+mkdir test
+
+- Changing directory to test
+cd test
+
+- Downloading WordCount.java file
+wget https://raw.githubusercontent.com/tejaspan/WordCount/master/WordCount.java
+
+- Exporting all classpath variables
+export CLASSPATH=`hadoop classpath`:.:
+
+- Compiling java program
+javac WordCount.java
+
+- Creating .jar file
+jar cf wc.jar WordCount*.class
+
+- Listing all files in current directory
+ls -l
+
+- Downloading textfile which we will be counting word from.
+wget https://raw.githubusercontent.com/robertsdionne/rwet/master/hw2/greeneggsandham.txt
+
+- Putting file into HDFS
+hdfs dfs -put greeneggsandham.txt
+
+- Listing file from HDFS current directory
+hdfs dfs -ls
+
+- Executing jar file 
+hadoop jar wc.jar WordCount greeneggsandham.txt output
+
+- Reading output file and searching for specified words
+hdfs dfs -cat output/part-r-00000 | grep -E 'Sam|Anywhere|Not'
+
+---------------------------------------------------
+WORD COUNT USING PIG SCRIPT
+---------------------------------------------------
+
+- Opening pig 
+pig -x mr
+
+- Loading all lines from text file to lines variable
+lines = LOAD 'greeneggsandham.txt' AS (line:chararray);
+
+- Spliting all words from lines and storing it into words variable
+words = FOREACH lines GENERATE FLATTEN(TOKENIZE(line)) as word;
+
+- Grouping by words and storing it into grouped variable
+grouped = GROUP words BY word;
+
+- Counting words and storing it into wordcount variable
+wordcount = FOREACH grouped GENERATE group, COUNT(words);
+
+- Storing output with , seperator into output1 directory in HDFS
+STORE wordcount INTO 'output1' USING PigStorage (',');
+quit;
+
+- Reading output file and searching for specified words
+hdfs dfs -cat output1/part-r-00000 | grep -E 'Sam|Anywhere|Not'
+
+---------------------------------------------------
+WORD COUNT USING HIVE QUERY
+---------------------------------------------------
+
+- Opening hive 
+hive
+
+- Creating table
+CREATE TABLE test_table(line STRING);
+
+- Loading text data from file into table
+LOAD DATA INPATH 'greeneggsandham.txt' OVERWRITE INTO TABLE test_table;
+
+- Creating new table which will going to insert from test_table and count the words
+CREATE TABLE word_counts AS
+SELECT word, count(1) AS count FROM
+(SELECT explode(split(line, ' ')) AS word FROM test_table) w
+GROUP BY word
+ORDER BY word;
+
+- searching for word count
+SELECT * FROM word_counts WHERE word in('Sam','Anywhere','Not');
+
+
+----------------------------------------------------
+ACCESSING HADOOP SERVICES USING AMBARI
+----------------------------------------------------
+
+Ambari:
+- Open firefox from Application menu(Top left corner) -> Internet -> Firefox
+- Copy and paste below address 
+
+http://localhost:8080/
+
+Username: admin
+Password: Mcmaster!2019
+
+Hadoop Services:
+
+Name Node:
+http://localhost:50070
+Job History:
+http://localhost:19888/jobhistory
+
+Hive View:
+http://localhost:8080/#/main/view/HIVE/auto_hive20_instance
+
+
+More information:
+
+https://docs.cloudera.com/HDPDocuments/HDP3/HDP-3.1.4/administration/content/mapreduce-ports.html
+https://docs.cloudera.com/HDPDocuments/HDP3/HDP-3.1.4/administration/content/hdfs-ports.html
+
+
